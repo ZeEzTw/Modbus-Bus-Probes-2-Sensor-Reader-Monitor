@@ -6,7 +6,7 @@ Key Features:
 
     Real-time monitoring loop with configurable polling intervals
 
-    Prints temperature and humidity data in a human-readable format
+    Prints temperature and humidity data
 
     Displays raw hexadecimal requests and responses (for debugging purposes)
 
