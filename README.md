@@ -1,31 +1,32 @@
-This Python script continuously reads data from multiple Modbus RTU devices connected via a serial interface.
-It polls each device for temperature and humidity, displays the values in the terminal, and can be easily extended to integrate with a database or dashboard.
-Key Features:
+This Python script continuously reads data from multiple Modbus RTU devices connected via a serial interface. It polls each device for temperature and humidity, displays the values in the terminal, and now integrates seamlessly with InfluxDB for time-series storage and Grafana for visualization.
+Key Features
 
     Supports multiple Modbus RTU slave devices
 
     Real-time monitoring loop with configurable polling intervals
 
-    Prints temperature and humidity data
+    Displays temperature and humidity data in the terminal
 
-    Displays raw hexadecimal requests and responses (for debugging purposes)
+    Shows raw Modbus hexadecimal requests and responses for debugging
 
-Configuration:
+    Sends data to InfluxDB for long-term storage and analysis
 
-Edit the configuration values inside the script to match your system’s setup. For example:
+    Compatible with Grafana dashboards for real-time data visualization
 
-    SERIAL_PORT: Change this to match your system’s serial port. To find the port, run the command sudo dmesg -w, plug in the sensors, then unplug them to see the port.
+Configuration
 
-    POLLING_INTERVAL, etc.
+Edit the configuration values in the script to match your system setup. For example:
 
-How to Run the Script:
+    SERIAL_PORT: Set this to your system’s serial port. You can run sudo dmesg -w while plugging/unplugging the sensor to identify the correct port.
 
-    Clone or download the script:
-    python3 read_modbus.py
-    
-    Press Ctrl + C to stop the monitoring loop.
+    POLLING_INTERVAL: Adjust the delay between each polling cycle.
 
-Output Example:
+Running the Script
+
+python3 read_modbus.py
+
+Use Ctrl + C to stop the monitoring loop.
+Sample Output
 
 --------------------------------------------------
 Polling devices at 14:22:10
@@ -36,12 +37,14 @@ ID 1: Temperature = 23.5°C, Humidity = 45.20%
 
 Waiting 5 seconds until next polling cycle...
 
-Optional Integrations:
+InfluxDB + Grafana Integration
 
-This script can be extended to integrate with:
+This script sends real-time data to InfluxDB and allows you to build dashboards in Grafana.
+InfluxDB Configuration
 
-    InfluxDB for time-series data storage
+Configure these values directly in the script or through environment variables:
 
-    Grafana for visualization dashboards
-
-Let me know if you would like me to add these integrations!
+token = os.environ.get("INFLUXDB_TOKEN", "<your_token>")
+org = "<your_organization>"
+host = "<your_influxdb_host_url>"  # e.g., https://us-east-1-1.aws.cloud2.influxdata.com
+bucket = "<your_bucket_name>"      # e.g., "temperature_humidity_data"
