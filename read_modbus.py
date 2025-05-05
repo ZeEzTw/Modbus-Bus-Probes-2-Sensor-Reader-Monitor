@@ -4,15 +4,29 @@ Modbus RTU Temperature and Humidity Sensor Monitor
 
 This script continuously polls Modbus RTU devices for temperature and humidity data
 via a serial connection. The script displays both the raw commands being sent and
-the received data, then repeats at a configurable interval.
+the received data, then writes the data to an InfluxDB database.
 """
 
 import serial
 import time
+import os
+from influxdb_client import InfluxDBClient, Point
+from influxdb_client.client.write_api import SYNCHRONOUS
+from datetime import datetime
 
 ######################
 # CONFIGURATION SECTION
 ######################
+
+# InfluxDB Configuration
+token = os.environ.get("INFLUXDB_TOKEN", "j60HrDCjeKlEyAc4m_GrYpFNjIpX--Jv9UX1v7qYtZxdyXfyuPwh_dqLl_bbJCDPi8hk-gJn_dksyh2eE11eug==")
+org = "Eli-np"
+host = "https://eu-central-1-1.aws.cloud2.influxdata.com"
+bucket = "temperature and humidity data"  # Name of the bucket to write to
+
+# Initialize InfluxDB client
+client = InfluxDBClient(url=host, token=token, org=org)
+write_api = client.write_api(write_options=SYNCHRONOUS)
 
 # Device Configuration
 DEVICE_IDS = [106, 124, 125, 129]  # List of device IDs to poll - add/remove device IDs as needed
@@ -75,7 +89,7 @@ def read_modbus_data(ser, device_id):
         device_id: Modbus device ID to query
         
     Returns:
-        None - prints results to console
+        Tuple of (device_id, temperature, humidity) or None if unsuccessful
     """
     # Build Modbus RTU request
     payload = bytes([device_id, FUNCTION_CODE]) + START_ADDR.to_bytes(2, 'big') + NUM_REGISTERS.to_bytes(2, 'big')
@@ -103,8 +117,51 @@ def read_modbus_data(ser, device_id):
         humidity = humid_raw / 100.0      # Scale factor for humidity
         
         print(f"ID {device_id}: Temperature = {temperature:.1f}°C, Humidity = {humidity:.2f}%")
+        
+        # Return the sensor data
+        return device_id, temperature, humidity
     else:
         print(f"ID {device_id}: No or incomplete response")
+        return None
+
+def write_batch_to_influxdb(sensor_data):
+    """
+    Write multiple sensors' data to InfluxDB in a single batch
+    
+    Args:
+        sensor_data: List of tuples (device_id, temperature, humidity)
+    """
+    if not sensor_data:
+        print("No sensor data to write to InfluxDB")
+        return
+        
+    try:
+        # Create a timestamp for all measurements
+        timestamp = datetime.utcnow()
+        
+        # Create points for all measurements
+        points = []
+        for device_id, temperature, humidity in sensor_data:
+            # Temperature point
+            temp_point = Point("temperature") \
+                .tag("device_id", f"modbus_{device_id}") \
+                .field("value", temperature) \
+                .time(timestamp)
+            points.append(temp_point)
+            
+            # Humidity point
+            humidity_point = Point("humidity") \
+                .tag("device_id", f"modbus_{device_id}") \
+                .field("value", humidity) \
+                .time(timestamp)
+            points.append(humidity_point)
+        
+        # Write all points to InfluxDB in a single batch
+        write_api.write(bucket=bucket, record=points)
+        print(f"Data for {len(sensor_data)} devices written to InfluxDB successfully")
+        
+    except Exception as e:
+        print(f"Failed to write batch data to InfluxDB: {e}")
 
 ######################
 # MAIN PROGRAM
@@ -122,10 +179,17 @@ def main():
                 print(f"Polling devices at {time.strftime('%H:%M:%S')}")
                 print("-" * 50)
                 
-                # Poll each device in sequence
+                # Collect data from all devices
+                sensor_data = []
                 for device_id in DEVICE_IDS:
-                    read_modbus_data(ser, device_id)
+                    result = read_modbus_data(ser, device_id)
+                    if result:
+                        sensor_data.append(result)
                     time.sleep(DEVICE_PAUSE)
+                
+                # Write all collected data to InfluxDB at once
+                if sensor_data:
+                    write_batch_to_influxdb(sensor_data)
                     
                 # Wait for next polling cycle
                 print(f"\nWaiting {POLLING_INTERVAL} seconds until next polling cycle...")
