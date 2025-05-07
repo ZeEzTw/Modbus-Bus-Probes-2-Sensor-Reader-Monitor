@@ -19,12 +19,13 @@ from datetime import datetime
 ######################
 
 # InfluxDB Configuration
-# Local InfluxDB Configuration
-host = "http://172.18.4.104:8086"  # Local InfluxDB server address with protocol
-bucket = "temperatura_humidity_data"  # Name of the bucket to write to
+token = os.environ.get("INFLUXDB_TOKEN", "j60HrDCjeKlEyAc4m_GrYpFNjIpX--Jv9UX1v7qYtZxdyXfyuPwh_dqLl_bbJCDPi8hk-gJn_dksyh2eE11eug==")
+org = "Eli-np"
+host = "https://eu-central-1-1.aws.cloud2.influxdata.com"
+bucket = "temperature and humidity data"  # Name of the bucket to write to
 
 # Initialize InfluxDB client
-client = InfluxDBClient(url=host)
+client = InfluxDBClient(url=host, token=token, org=org)
 write_api = client.write_api(write_options=SYNCHRONOUS)
 
 # Device Configuration
