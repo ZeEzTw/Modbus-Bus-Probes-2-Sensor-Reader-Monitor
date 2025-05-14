@@ -10,8 +10,7 @@ the received data, then writes the data to an InfluxDB database.
 import serial
 import time
 import os
-from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb import InfluxDBClient
 from datetime import datetime
 
 ######################
@@ -20,12 +19,14 @@ from datetime import datetime
 
 # InfluxDB Configuration
 # Local InfluxDB Configuration.
-host = "http://172.18.4.104:8086"  # Local InfluxDB server address with protocol
-bucket = "temperatura_humidity_data"  # Name of the bucket to write to
+host = "172.18.4.104"  # Local InfluxDB server address (no protocol needed for v1.x)
+port = 8086            # Default InfluxDB port
+username = ""          # Leave empty if no authentication
+password = ""          # Leave empty if no authentication
+database = "temperatura_humidity_data"  # Name of the database to write to
 
-# Initialize InfluxDB client
-client = InfluxDBClient(url=host)
-write_api = client.write_api(write_options=SYNCHRONOUS)
+# Initialize InfluxDB client for version 1.6.4
+client = InfluxDBClient(host=host, port=port, username=username, password=password, database=database)
 
 # Device Configuration
 DEVICE_IDS = [106, 124, 125, 129]  # List of device IDs to poll - add/remove device IDs as needed
@@ -136,27 +137,39 @@ def write_batch_to_influxdb(sensor_data):
         
     try:
         # Create a timestamp for all measurements
-        timestamp = datetime.utcnow()
+        timestamp = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
         
-        # Create points for all measurements
+        # Create points for all measurements in InfluxDB 1.x format
         points = []
         for device_id, temperature, humidity in sensor_data:
             # Temperature point
-            temp_point = Point("temperature") \
-                .tag("device_id", f"modbus_{device_id}") \
-                .field("value", temperature) \
-                .time(timestamp)
+            temp_point = {
+                "measurement": "temperature",
+                "tags": {
+                    "device_id": f"modbus_{device_id}"
+                },
+                "time": timestamp,
+                "fields": {
+                    "value": float(temperature)
+                }
+            }
             points.append(temp_point)
             
             # Humidity point
-            humidity_point = Point("humidity") \
-                .tag("device_id", f"modbus_{device_id}") \
-                .field("value", humidity) \
-                .time(timestamp)
+            humidity_point = {
+                "measurement": "humidity",
+                "tags": {
+                    "device_id": f"modbus_{device_id}"
+                },
+                "time": timestamp,
+                "fields": {
+                    "value": float(humidity)
+                }
+            }
             points.append(humidity_point)
         
-        # Write all points to InfluxDB in a single batch
-        write_api.write(bucket=bucket, record=points)
+        # Write all points to InfluxDB in a single batch using the v1.x API
+        client.write_points(points)
         print(f"Data for {len(sensor_data)} devices written to InfluxDB successfully")
         
     except Exception as e:
