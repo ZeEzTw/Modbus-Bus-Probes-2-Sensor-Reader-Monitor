@@ -19,7 +19,7 @@ from datetime import datetime
 ######################
 
 # InfluxDB Configuration
-# Local InfluxDB Configuration
+# Local InfluxDB Configuration.
 host = "http://172.18.4.104:8086"  # Local InfluxDB server address with protocol
 bucket = "temperatura_humidity_data"  # Name of the bucket to write to
 
